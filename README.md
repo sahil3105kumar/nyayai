@@ -95,7 +95,7 @@ git clone <repo>
 cd NyayAI
 
 # create virtualenv
-python3.10 -m venv .venv
+uv venv
 source .venv/bin/activate
 
 # pytorch FIRST (important, do this before requirements.txt)
