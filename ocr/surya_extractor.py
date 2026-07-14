@@ -13,6 +13,7 @@ from surya.detection import DetectionPredictor
 from surya.recognition import RecognitionPredictor
 
 from ocr.tokens import LineSpan
+from config.settings import settings
 
 
 class SuryaExtractor:
