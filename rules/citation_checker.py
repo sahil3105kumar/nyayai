@@ -16,10 +16,12 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from ocr.tokens import LineSpan
 from model.schemas import ErrorSpan
 
+from config.settings import settings
+
 logger = logging.getLogger(__name__)
 
-QDRANT_URL = "http://localhost:6333"
-COLLECTION_NAME = "legal_corpus"
+QDRANT_URL = settings.qdrant_url
+COLLECTION_NAME = settings.qdrant_collection
 
 # citation patterns found in Indian legal documents
 # order matters — more specific patterns first

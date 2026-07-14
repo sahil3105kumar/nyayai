@@ -16,10 +16,9 @@ from transformers import AutoTokenizer
 
 from ocr.tokens import LineSpan
 
-
-CHECKPOINT = "law-ai/InLegalBERT"
-MAX_TOKENS = 512
-STRIDE = 128  # overlap between chunks so spans at boundaries aren't missed
+from config.settings import settings
+from config.constants import MAX_TOKENS, CHUNK_STRIDE
+CHECKPOINT = settings.bert_checkpoint 
 
 
 @dataclass
@@ -106,7 +105,7 @@ def build_chunks(spans: list[LineSpan]) -> list[Chunk]:
 
         # advance by window - STRIDE so chunks overlap
         # if we're near the end and the remaining tokens fit in one chunk, stop
-        next_i = i + window - STRIDE
+        next_i = i + window - CHUNK_STRIDE
         if next_i >= len(all_token_ids):
             break
         i = next_i

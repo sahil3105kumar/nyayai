@@ -16,11 +16,14 @@ from transformers import AutoTokenizer, AutoModelForTokenClassification
 from model.preprocess import Chunk
 from model.schemas import LABELS, ID2LABEL
 
+from config.settings import settings
+from config.constants import INFERENCE_BATCH_SIZE
+
 logger = logging.getLogger(__name__)
 
-CHECKPOINT = "law-ai/InLegalBERT"
-CHECKPOINT_DIR = os.path.join(os.path.dirname(__file__), "checkpoint")
-BATCH_SIZE = 8  # safe default for 6gb vram at inference (no gradients stored)
+CHECKPOINT = settings.bert_checkpoint
+CHECKPOINT_DIR = settings.checkpoint_dir
+BATCH_SIZE = INFERENCE_BATCH_SIZE  # safe default for 6gb vram at inference (no gradients stored)
 
 
 def _get_device():

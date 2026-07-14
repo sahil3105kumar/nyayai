@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from config.constants import ERROR_COLORS
 
 
 # BIO label scheme for token classification
@@ -42,10 +43,5 @@ class ErrorSpan:
     @property
     def highlight_color(self):
         # consistent color per error type for the frontend
-        colors = {
-            "spelling": "#FFD700",    # yellow
-            "grammar": "#FFA500",     # orange
-            "citation": "#FF4444",    # red
-            "entity": "#00BFFF"       # deep sky blue
-        }
+        colors = ERROR_COLORS
         return colors.get(self.error_type, "#CCCCCC")
