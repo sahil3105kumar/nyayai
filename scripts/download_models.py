@@ -43,14 +43,14 @@ ACTS = [
     {
         "name": "Constitution",
         "filename": "constitution.pdf",
-        "url": "https://www.indiacode.nic.in/bitstream/123456789/15240/1/constitution_of_india.pdf",
+        "url": "https://www.indiacode.nic.in/bitstream/123456789/19151/1/constitution_of_india.pdf",
         "dir": "constitution",
         "status": "active",
     },
     {
         "name": "CPC",
         "filename": "cpc.pdf",
-        "url": "https://www.indiacode.nic.in/bitstream/123456789/2191/1/A1908-05.pdf",
+        "url": "https://www.indiacode.nic.in/indiacode/bitstream/123456789/2191/1/aA1908-05.pdf",
         "dir": "cpc",
         "status": "active",
     },

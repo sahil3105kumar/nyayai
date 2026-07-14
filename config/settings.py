@@ -36,6 +36,25 @@ class Settings(BaseSettings):
     spacy_model: str = "en_core_web_sm"
 
     # -------------------------
+    # Surya
+    # -------------------------
+
+    recognition_batch_size: int = Field(
+        default=32,
+        alias="RECOGNITION_BATCH_SIZE",
+    )
+
+    detector_batch_size: int = Field(
+        default=4,
+        alias="DETECTOR_BATCH_SIZE",
+    )
+
+    torch_device: str = Field(
+        default="cuda",
+        alias="TORCH_DEVICE",
+    )
+
+    # -------------------------
     # Infrastructure
     # -------------------------
 
@@ -54,7 +73,10 @@ class Settings(BaseSettings):
         alias="REDIS_URL",
     )
 
-    debug: bool = Field(default=True, alias="DEBUG")
+    debug: bool = Field(
+        default=True,
+        alias="DEBUG",
+    )
 
 
 settings = Settings()
