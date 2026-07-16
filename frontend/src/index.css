@@ -1,0 +1,62 @@
+/*
+  design tokens - a document-review tool, not a marketing page. the palette
+  reads "court filing," not "AI product": cool paper-gray background, deep
+  judicial navy accent, hairline dividers. the four ERROR_* colors are
+  functional, not decorative - they must match config/constants.py's
+  ERROR_COLORS exactly, since they're the same colors used server-side in
+  renderer/colors.py.
+*/
+
+:root {
+  --bg: #edeee9;
+  --surface: #ffffff;
+  --ink: #1b1e24;
+  --ink-muted: #5b6270;
+  --accent: #26415c;
+  --accent-soft: #dce3ea;
+  --hairline: #d8d6ce;
+
+  --error-spelling: #ffd700;
+  --error-grammar: #ff8c00;
+  --error-citation: #ff4444;
+  --error-entity: #8a2be2;
+
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
