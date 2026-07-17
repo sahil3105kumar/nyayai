@@ -34,7 +34,7 @@ Path(_sqlite_path).parent.mkdir(parents=True, exist_ok=True)
 
 app = Celery("nyayai")
 
-app.conf.broker_url = settings.celery_broker_url #
+app.conf.broker_url = settings.celery_broker_url #type: ignore
 app.conf.broker_transport_options = {
     # producer and consumer run on the same machine here, so "in" and "out"
     # both point at the same directory - see Kombu's filesystem transport docs
@@ -42,11 +42,12 @@ app.conf.broker_transport_options = {
     "data_folder_out": f"{settings.celery_broker_data_folder}/out",
     "data_folder_processed": f"{settings.celery_broker_data_folder}/processed",
 }
-app.conf.result_backend = settings.celery_result_backend
+app.conf.result_backend = settings.celery_result_backend #type: ignore
 app.conf.task_routes = TASK_ROUTES
 
 # task results (the report dict) are small JSON, not files - fine to keep
 # in the sqlite backend indefinitely for now. revisit if this grows.
 app.conf.result_expires = None
 
-app.autodiscover_tasks(["workers"])
+# app.autodiscover_tasks(["workers"])
+app.conf.imports = ("workers.tasks",)
