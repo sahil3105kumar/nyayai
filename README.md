@@ -1,249 +1,191 @@
-# nyayai
+# NyayAI
 
-an AI tool that proofreads indian legal documents (FIRs, contracts, court notices etc) and highlights spelling, grammar and semantic errors.
+An AI-powered error detection tool for Indian legal documents (FIRs, contracts,
+court notices). NyayAI ingests a PDF, detects spelling, grammar, and semantic
+errors — including wrong IPC/BNS section citations and entity inconsistencies
+across a document — and returns an annotated PDF with color-coded highlights
+plus a structured report.
 
-built this as a personal project to learn NLP. still very much work in progress.
-
----
-
-## what it does
-
-upload a PDF → get back the same PDF with colored highlights showing:
-- 🟡 spelling mistakes
-- 🟠 grammar errors  
-- 🔴 wrong IPC/BNS section references
+**Everything runs locally.** No external OCR or LLM APIs — built for courts,
+law firms, and legal aid organisations where document confidentiality and
+per-document cost both matter.
 
 ---
 
-## how it works (roughly)
+## Status
 
-```
-PDF
- ↓
-extract text page by page
-  - if page has text → pymupdf (fast)
-  - if page is scanned → surya OCR (slow but works)
- ↓
-run InLegalBERT on the text
-  - fine-tuned on Indian legal sentences
-  - classifies each word as: correct / spelling error / grammar error / wrong citation
- ↓
-for wrong citations → check against IPC/BNS/Constitution database (qdrant)
- ↓
-draw colored boxes on the original PDF
- ↓
-show in browser with React
-```
+| Component | Status |
+|---|---|
+| OCR (`ocr/`) | ✅ done |
+| Model scaffold (`model/`) | ✅ done — no fine-tuned weights yet, returns all-`O` labels |
+| Corpus (`corpus/`) | 🟡 infra done (schemas, chunker, embeddings, uploader, search) — act-specific parsers in progress |
+| Rules (`rules/`) | ✅ done — see known limitations below |
+| Pipeline (`pipeline/`) | ✅ done |
+| Renderer (`renderer/`) | ✅ done |
+| API + workers (`api/`, `workers/`, `services/`) | ✅ done |
+| Frontend (`frontend/`) | 🟡 scaffolded — running against mock data, not yet wired to the real API |
+| Fine-tuning (`train/`) | ⬜ not started |
+
 
 ---
 
-## folder structure
+## Architecture
 
-this is what actually exists on disk right now, not the final planned structure.
-more files get added as each phase progresses (see phase plan doc for order).
-
-```
-NyayAI/
-│
-├── ocr/
-│   ├── __init__.py
-│   ├── tokens.py            WordToken dataclass, shared by everything below
-│   └── native_extractor.py  NativeExtractor - pulls text from pdfs that already have a text layer
-│                            (surya_extractor.py and router.py not built yet)
-│
-├── model/                   empty for now, InLegalBERT pipeline goes here next
-│
-├── test_deps.py             checks pinned versions actually installed correctly
-├── test_gpu.py              checks torch can see the gpu before doing anything heavy
-└── README.md
-```
-
-planned but not built yet (coming up in order):
+Each module has one job. Folder structure is frozen — see `docs/architecture.md`
+for the full layout.
 
 ```
-├── ocr/
-│   ├── surya_extractor.py   SuryaExtractor for scanned pages
-│   └── pipeline.py          combines native + surya behind one extract() call
-│
-├── model/
-│   ├── checkpoint/          trained model goes here (not in git, too big)
-│   └── detector.py          runs InLegalBERT inference on extracted words
-│
-├── api/
-│   └── main.py              FastAPI server - handles uploads and job status
-│
-├── frontend/
-│   └── src/
-│       ├── App.jsx
-│       ├── UploadPage.jsx
-│       └── ResultPage.jsx   shows the annotated PDF with highlights
-│
-├── scripts/
-│   ├── generate_data.py     makes training data from IL-TUR dataset
-│   └── train.py             fine-tunes InLegalBERT
-│
-├── data/
-│   ├── raw_pdfs/            uploaded pdfs (temp storage)
-│   └── training_data/       train.jsonl, val.jsonl, test.jsonl
-│
-├── tests/
-│   └── test_ocr.py
-│
-├── config.py                all settings in one place
-├── main.py                  quick cli test script
-├── requirements.txt
-├── .env.example
-└── docker-compose.yml       runs qdrant + redis (need these running)
+PDF in
+  │
+  ▼
+ocr/            extract(pdf_path) -> list[LineSpan]
+  │
+  ▼
+pipeline/engine.py
+  ├─▶ model/            InLegalBERT token classification -> ErrorSpan
+  ├─▶ rules/            citation_checker (via corpus.search), entity_checker
+  └─▶ merge -> deduplicate -> reading-order sort
+  │
+  ▼
+renderer/        annotated PDF + JSON report + HTML report
+  │
+  ▼
+services/analysis.py   orchestrates the above for one job_id
+  │
+  ▼
+workers/tasks.py (Celery)  ◀── api/routes/upload.py enqueues
+  │
+  ▼
+api/routes/jobs.py   poll /status/{job_id}, fetch /result/{job_id}
+  │
+  ▼
+frontend/        PDF.js canvas + highlight overlay + margin rail
 ```
+
+`corpus/` is a separate pipeline that populates Qdrant ahead of time (IPC,
+BNS, BNSS, CPC, Constitution) so `rules/citation_checker.py` can do exact
+lookups — see `corpus/search.py`. Rules code never talks to Qdrant directly.
 
 ---
 
-## setup
+## Async job processing — no Redis
 
-**you need:**
-- python 3.10
-- NVIDIA GPU with CUDA 12.4 (i have RTX 4050 6GB)
-- docker (for qdrant and redis)
-- node 20+ (for frontend)
+The API and the Celery worker are separate processes. Rather than adding
+Redis as a required service just for task queuing, Celery is configured with:
 
-**install:**
+- **Broker:** the filesystem transport (queued tasks are files under
+  `data/celery/broker/`)
+- **Result backend:** SQLite via SQLAlchemy (`data/celery/results.sqlite`)
 
-```bash
-# clone and go in
-git clone <repo>
-cd NyayAI
+Both are local files — nothing else to run. This is a one-line config swap
+to `redis://` or `amqp://` later if this ever needs to scale past one
+machine; nothing in `workers/` or `api/` depends on which broker is
+configured.
 
-# create virtualenv
-uv venv
-source .venv/bin/activate
-
-# pytorch FIRST (important, do this before requirements.txt)
-pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu124
-
-# then surya BEFORE other requirements (has strict transformers version)
-pip install surya-ocr==0.9.3
-
-# then everything else
-pip install -r requirements.txt
-
-# also need this system package
-sudo apt install poppler-utils
-```
-
-**start qdrant and redis:**
-
-```bash
-docker-compose up -d
-```
-
-**verify GPU works:**
-
-```bash
-python -c "import torch; print(torch.cuda.get_device_name(0))"
-```
+**Two things that matter if you touch this:**
+- Every path in `config/settings.py`'s Celery/storage settings must be
+  **absolute**, anchored to a `BASE_DIR` derived from the settings file's
+  own location — not a relative path. The API process and the worker
+  process won't reliably share a working directory, and a relative path
+  resolves differently per-process, silently pointing at two different
+  physical folders. A task can sit "enqueued" forever with no error if this
+  is wrong.
+- A Celery worker only consumes queues it's explicitly told to with `-Q`.
+  Routing a task to a custom queue (see `workers/queues.py`) doesn't make a
+  worker listen on it automatically.
 
 ---
 
-## training the model
+## Setup
 
-first generate training data:
+### Prerequisites
+- Python 3.10 (pinned — see dependency table below)
+- `uv` package manager
+- Node.js (for the frontend)
+- Docker (for Qdrant)
+- NVIDIA GPU with CUDA, 6GB+ VRAM (for OCR/model inference)
 
+### Install
 ```bash
-python scripts/generate_data.py
-# takes about 20 min
-# outputs: data/training_data/train.jsonl (120k examples)
+uv sync
+cp .env.example .env   # fill in as needed
 ```
 
-then train:
-
+### Start Qdrant
 ```bash
-python scripts/train.py
-# takes ~8 hours on 4050
-# model saved to model/checkpoint/
+docker-compose up -d qdrant
 ```
 
----
-
-## running
-
-**backend:**
+### Run the API
 ```bash
-uvicorn api.main:app --reload
+uv run uvicorn api.main:app --reload
 ```
 
-**frontend:**
+### Run a Celery worker
+```bash
+uv run celery -A workers.celery_app worker --loglevel=info -Q pdf_processing
+```
+The `-Q pdf_processing` is required — see the note above.
+
+### Run the frontend
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-open `http://localhost:5173`
-
-**quick test without frontend:**
+### Ingest the legal corpus (one-time, or after an act is amended)
 ```bash
-python main.py some_legal_doc.pdf
+uv run python scripts/ingest_corpus.py --all
 ```
 
 ---
 
-## running tests
+## Dependency versions (frozen)
 
-```bash
-pytest tests/ -v
-```
-
-surya is mocked in tests so you don't need a GPU to run them.
-
----
-
-## current status
-
-- [x] OCR pipeline (pymupdf + surya)
-- [ ] ingest IPC/BNS/Constitution into qdrant
-- [ ] fine-tune InLegalBERT (need to generate data first)
-- [ ] FastAPI + celery async jobs
-- [ ] React frontend with PDF canvas
-- [ ] Docker everything together
+| package | version | reason |
+|---|---|---|
+| surya-ocr | 0.9.3 | 0.20+ needs vllm, too heavy for dev setup |
+| transformers | 4.48.0 | newer versions break surya's `SuryaOCRConfig` |
+| torch | 2.4.1+cu124 | stable on RTX 4050, cu124 wheel confirmed working |
+| qdrant-client | 1.18.0 | `query_points` API |
+| qdrant (server) | v1.15.5 | current stable at time of writing |
 
 ---
 
-## stuff i learned building this
+## Known limitations
 
-- pymupdf and fitz are the same thing (fitz is the old name)
-- if you have a `frontend/` folder in your project root it conflicts with pymupdf's internal module... had to use `import pymupdf as fitz` to fix it
-- surya 0.20.0 is completely different from 0.9.3, newer version needs a whole separate server to run. using 0.9.3
-- surya default batch sizes (256 for recognition) are way too big for 6GB VRAM, had to drop to 32
-- InLegalBERT is a BERT model pre-trained specifically on Indian legal text which is nice
-
----
-
-## dependencies and why
-
-| package | why |
-|---|---|
-| pymupdf | reads text from PDFs with exact word positions |
-| surya-ocr | OCR for scanned PDFs, works well with Hindi |
-| InLegalBERT | BERT model already trained on Indian legal text |
-| qdrant | vector database for storing IPC/BNS sections |
-| fastapi | backend API |
-| celery + redis | PDF processing is slow (30-60s), need async jobs |
-| react + pdf.js | render PDF in browser and draw highlight boxes on top |
-
----
-
-## known issues
-
-- surya is slow (~10s per scanned page on 4050)
-- sometimes gets OOM on pages with lots of dense text, falls back to native extractor
-- semantic error detection (wrong section numbers) isn't great yet, needs more training data
-- frontend is basically empty right now
+- **OCR:** surya is slow (~10s/scanned page on RTX 4050) and frozen at
+  0.9.3, 18+ months behind current. Async processing hides the latency;
+  the version pin isn't worth revisiting until it causes a real
+  correctness problem.
+- **Entity checker:** `en_core_web_sm` mislabels entity *types*
+  inconsistently across sentences for Indian names — e.g. the same person's
+  name tagged `PERSON` in one line and `GPE` in another, which sends it to
+  the wrong clustering bucket and it never gets compared against its other
+  spelling. Confirmed against real test cases, not just a documented
+  assumption. Needs a fine-tuned Indian legal NER model; not planned yet.
+- **Model:** no fine-tuned weights — `predict.py` returns all-`O` labels
+  until `train/` exists and produces a checkpoint. No correction
+  suggestions for ML-detected errors (citations have suggestions, from
+  corpus payload).
+- **Corpus:** IPC → BNS mappings only come from verified sources
+  (`corpus/data/ipc_bns_mapping.py`) — never fabricated or interpolated.
+  Corpus is static; amendments after ingestion need re-ingestion.
+- **Corpus parsers:** IPC's real PDF has real-world noise a naive parser
+  misses — a 13-page table of contents with no dash after section titles,
+  footnote reference markers stuck directly against bracket-wrapped
+  amended sections (e.g. `7[5. Certain laws...`), at least one section
+  missing its period entirely, and repealed sections that simply don't
+  appear in the body text at all. In progress.
+- **General:** no authentication (fine for local use, must be added before
+  any deployment), no output cleanup task yet, English-language documents
+  only.
 
 ---
 
-## references
+## Repository layout
 
-- [InLegalBERT](https://huggingface.co/law-ai/InLegalBERT)
-- [surya OCR](https://github.com/VikParuchuri/surya)
-- [IL-TUR dataset](https://huggingface.co/datasets/rceborg/il-tur-lsi)
-- [IndiaCode](https://indiacode.nic.in) - source for IPC, BNS, Constitution PDFs
+See `docs/architecture.md` for the full frozen folder structure.
+
+this is the updated readme, now compare
