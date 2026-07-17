@@ -91,6 +91,13 @@ data/temp/
 data/cache/
 data/uploads/
 data/processed/
+data/celery/
+
+# Control files
+control/
+control
+
+
 
 # Keep directory structure
 !data/.gitkeep
