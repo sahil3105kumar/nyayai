@@ -148,3 +148,4 @@ output/
 output/
 docker/qdrant/
 docker/redis/
+/data

@@ -12,7 +12,6 @@ dependencies = [
     "pdfplumber",
     "pdf2image==1.17.0",
     "surya-ocr==0.9.3",
-
     # ------------------------
     # ML
     # ------------------------
@@ -22,34 +21,28 @@ dependencies = [
     "seqeval==1.2.2",
     "evaluate==0.4.6",
     "sentence-transformers==5.1.0",
-
     # ------------------------
     # Vector DB
     # ------------------------
     "qdrant-client==1.17.1",
-
     # ------------------------
     # Backend
     # ------------------------
     "fastapi==0.115.0",
     "uvicorn[standard]==0.30.6",
     "python-multipart==0.0.12",
-
     # ------------------------
     # Settings
     # ------------------------
     "pydantic==2.8.2",
     "pydantic-settings==2.5.2",
-
     # ------------------------
     # Background Jobs
     # ------------------------
     "celery==5.4.0",
-
     # Filesystem result backend
     "sqlalchemy>=2.0.51",
     "greenlet>=3.5.3",
-
     # ------------------------
     # Utilities
     # ------------------------
@@ -58,6 +51,7 @@ dependencies = [
     "pypdf",
     "reportlab",
     "pytest",
+    "dvc>=3.67.1",
 ]
 
 [tool.uv.sources]
