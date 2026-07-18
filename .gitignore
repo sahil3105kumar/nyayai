@@ -92,6 +92,8 @@ data/cache/
 data/uploads/
 data/processed/
 data/celery/
+data/output/
+data/training/
 
 # Control files
 control/
