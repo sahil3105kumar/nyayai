@@ -16,13 +16,14 @@ from qdrant_client.models import (
 )
 
 from corpus.schemas import Passage
+from config.settings import settings
 
 COLLECTION_NAME = "legal_corpus"
 VECTOR_SIZE = 768  # InLegalBERT hidden size
 
 
-def get_client(url: str = "http://localhost:6333") -> QdrantClient:
-    return QdrantClient(url=url)
+def get_client(url: str | None = None) -> QdrantClient:
+    return QdrantClient(url=url or settings.qdrant_url)
 
 
 def ensure_collection(client: QdrantClient) -> None:
