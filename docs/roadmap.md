@@ -56,8 +56,9 @@ deliberately.
 | **M6 — Ship It** | Final QA gate, then Vercel deployment (deployment is intentionally last) |
 
 **Most parallelizable work:** the BNS/BNSS/CPC/Constitution parsers in M1
-are independent of each other once the `parsers/base.py` inheritance
-question is resolved — multiple people can take these simultaneously.
+are independent of each other, and the `parsers/base.py` inheritance
+question is resolved (issue #26 - no shared base class; deleted) —
+multiple people can take these simultaneously.
 
 **Pull forward regardless of milestone order:** the crashing HTML report
 bug (M2) — it's a live P0 affecting every document with at least one

@@ -19,25 +19,6 @@ services:
       retries: 5
       start_period: 10s
 
-  redis:
-    image: redis:7.2-alpine
-    container_name: nyayai-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    # appendonly so queued/in-flight Celery jobs survive a container restart -
-    # this is a job queue, losing "task in progress" state on restart is worse
-    # than the small disk/perf cost of AOF persistence
-    command: ["redis-server", "--appendonly", "yes"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
 
 volumes:
   qdrant_storage:
-  redis_data:

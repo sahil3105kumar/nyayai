@@ -1,6 +1,5 @@
 NyayAI/
 ├── README.md
-├── main.py                     # leftover `uv init` boilerplate ("Hello from nyayai!") - dead file, not used anywhere, safe to delete
 ├── pyproject.toml
 ├── uv.lock
 ├── .python-version
@@ -50,14 +49,15 @@ NyayAI/
 │   (date_checker.py, formatting_checker.py, abbreviation_checker.py, consistency_checker.py
 │    are planned future checkers with no file yet - not stubbed, just not started)
 │
-├── corpus/                        # infra done, only IPC parser exists (old/naive version)
+├── corpus/                        # infra done; IPC parser rewritten (issue #25), BNS/BNSS/CPC/Constitution not yet started
 │   ├── __init__.py
 │   ├── ingest.py                  # top level: parse -> chunk -> embed -> upload
 │   │                              #   NOTE: has a stray unused `from surya import settings` import,
 │   │                              #   shadowed by the real `from config.settings import settings` - dead import
 │   ├── parser.py                  # dispatch only; _PARSERS dict currently only registers IPC
-│   ├── pdf_utils.py                # shared PDF text-extraction helpers - overlaps with
-│   │                              #   parsers/base.py's header-stripping logic, needs deduplication
+│   ├── pdf_utils.py                # shared PDF text-extraction + header-stripping helpers -
+│   │                              #   single source of truth now (issue #26); parsers call these
+│   │                              #   instead of keeping private copies
 │   ├── chunker.py                  # splits Section.body by legal structure (Explanation/
 │   │                              #   Illustration/Exception markers), not by token count
 │   ├── embeddings.py               # wraps InLegalBERT (hardcoded, not a configurable choice);
@@ -68,10 +68,8 @@ NyayAI/
 │   ├── schemas.py                  # Section / Passage dataclasses (fields: act, unit_type, number,
 │   │                              #   title, body/text, status, metadata dict)
 │   └── parsers/
-│       ├── base.py                  # defines ChapterSectionParser for inheritance - NOT actually
-│       │                            #   used by IPCParser; open architectural question, see docs/corpus.md
-│       ├── ipc.py                   # exists, but still the naive regex version - no TOC-guided
-│       │                            #   parsing, no footnote/bracket handling, no CHAPTER VA support yet
+│       ├── ipc.py                   # TOC-guided rewrite done (issue #25) - handles footnote/bracket
+│       │                            #   noise, missing periods, letter-suffixed chapters (VA/IXA/XXA)
 │       ├── bns.py                   # 0-byte placeholder
 │       ├── bnss.py                  # 0-byte placeholder
 │       ├── cpc.py                   # 0-byte placeholder
@@ -166,12 +164,6 @@ NyayAI/
 │   ├── temp/                        # scratch - gitignored
 │   └── celery/                      # filesystem broker + sqlite result backend files live here
 │
-├── reviews/                        # historical architectural review notes from earlier in
-│                                   #   development - some recommendations here are now tracked
-│                                   #   as GitHub issues; candidate for folding into architecture.md
-│                                   #   and removing once those issues close
-│   ├── review of phase 3 - corpus section.md
-│   └── review of pipeline and orchestration.md
 │
 ├── tests/                          # NO REAL TESTS YET - see note below
 │   ├── conftest.py                    # empty (`pass`)
@@ -192,31 +184,13 @@ NyayAI/
     ├── corpus.md
     ├── api.md
     ├── roadmap.md
-    ├── Folder_structure.md            # this file
-    ├── PHASE_1.md                     # historical dev log - phase 1 (OCR), kept for the real
-    │                                 #   lessons learned during that phase, still broadly accurate
-    ├── PHASE_2.md                     # historical dev log - phase 2 (model), superseded in places
-    │                                 #   (describes model/pipeline.py and model/citation_checker.py
-    │                                 #   as the eventual home for logic that later moved to pipeline/
-    │                                 #   and rules/ respectively) - kept for historical context only
-    └── Phase Explanation.md           # earliest project plan - meaningfully stale (WordToken,
-                                      #   Redis, scripts/-based corpus ingestion) - kept as a historical
-                                      #   record of the original plan, not a current reference
+    └──  Folder_structure.md            # this file
 
 ---
 
 ## notes on this listing vs. the repo
-
-- `test_deps.py` and `test_gpu.py` sitting at the repo root (not in
-  `scripts/` or `tests/`) look like ad hoc personal debugging scripts —
-  worth moving into `scripts/` or removing if they're no longer needed.
-- `main.py` at the root is unmodified `uv init` boilerplate
-  (`print("Hello from nyayai!")`) — not used by anything, safe to delete.
 - DVC (`.dvc/`, `.dvcignore`, `data.dvc`) is present but not documented
   anywhere else in the repo (README, other docs) — worth either
   documenting what it tracks and how to use it, or removing it if it's
   not actually in active use.
-- `docker-compose.yml` still defines a `redis` service. Nothing in the
-  current codebase uses it — Celery uses the filesystem broker + SQLite
-  result backend (see `workers/celery_app.py` and `config/settings.py`).
-  This is a known, tracked inconsistency, not intentional.
+

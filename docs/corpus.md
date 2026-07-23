@@ -106,13 +106,14 @@ The commented-out lines are exactly what's in the file today — adding a
 new act means writing `corpus/parsers/{act}.py` and uncommenting its line
 here, nothing else changes.
 
-There is deliberately **no shared base class enforced across parsers** —
-each act's real-world PDF has different formatting quirks, so parsers are
-meant to be independent. `corpus/parsers/base.py` does currently define a
-`ChapterSectionParser` class intended for inheritance, but `IPCParser`
-doesn't actually use it — this is an open architectural question (which
-approach wins) rather than a settled design, and it's worth resolving
-before writing the BNS/BNSS/CPC parsers so they don't have to be redone.
+There is deliberately **no shared base class across parsers** — each
+act's real-world PDF has different formatting quirks, so parsers are
+independent (resolved in issue #26: `corpus/parsers/base.py`'s unused
+`ChapterSectionParser` was deleted rather than adopted). Parsers do
+still share plain PDF-reading helpers — page extraction and
+running-header stripping — via `corpus/pdf_utils.py`, since that's
+generic PDF plumbing, not act-specific grammar; sharing a *function* is
+not the same thing as inheriting a *class*.
 
 ---
 
