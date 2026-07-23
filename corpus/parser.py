@@ -13,14 +13,14 @@ from pathlib import Path
 
 from corpus.schemas import Section
 from corpus.parsers.ipc import IPCParser
-# from corpus.parsers.bns import BNSParser
+from corpus.parsers.bns import BNSParser
 # from corpus.parsers.bnss import BNSSParser
 # from corpus.parsers.cpc import CPCParser
 # from corpus.parsers.constitution import ConstitutionParser
 
 _PARSERS = {
     "IPC": IPCParser(),
-    # "BNS": BNSParser(),
+    "BNS": BNSParser(),
     # "BNSS": BNSSParser(),
     # "CPC": CPCParser(),
     # "CONSTITUTION": ConstitutionParser(),
