@@ -12,9 +12,8 @@ per-document bitstream IDs with no stable, predictable URL pattern - while
 researching this I found two DIFFERENT bitstream IDs pointing at what
 should be the same IPC PDF. hardcoding a guessed link here risks silently
 pointing at a stale or wrong version of an actual legal document - exactly
-what this project's "verified sources only" principle (see
-corpus/data/ipc_bns_mapping.py) is meant to guard against. safer to grab
-these by hand once and confirm you have the current version.
+what this project's "verified sources only" principle is meant to guard against.
+safer to grab these by hand once and confirm you have the current version.
 """
 
 import argparse

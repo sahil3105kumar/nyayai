@@ -36,16 +36,11 @@ bracket noise harmless - a false-positive match is simply never the
 number being waited for, so it's silently skipped rather than accepted.
 """
 
-import re
-<<<<<<< HEAD
-=======
-from dataclasses import dataclass, field
 import json
->>>>>>> 0ce4b09 (feat: integrate official IPC and CrPC section mappings)
+import re
 from pathlib import Path
 
 from corpus.schemas import Section
-from corpus.data.ipc_bns_mapping import IPC_TO_BNS
 from corpus.pdf_utils import extract_pdf_pages, remove_repeated_headers
 
 ACT = "IPC"
@@ -127,54 +122,18 @@ _MAPPING_FILE = (
 class IPCParser:
     act = ACT
 
-<<<<<<< HEAD
-    def parse(self, pdf_path: Path) -> list[Section]:
-        raw_text = self._extract_raw_text(pdf_path)
-        toc_text, body_text = self._split_toc_and_body(raw_text)
-        toc_entries = self._parse_toc(toc_text)
-        return self._parse_body(body_text, toc_entries)
-=======
     # Load the IPC → BNS mapping once during init.
     def __init__(self):
         with open(_MAPPING_FILE, encoding="utf-8") as f:
             data = json.load(f)
-
         self._ipc_to_bns = data.get("ipc_to_bns", {})
 
-    def parse(self, pdf_path: Path) -> List[Section]:
+    def parse(self, pdf_path: Path) -> list[Section]:
         """Public entry point – takes a PDF path, returns Sections."""
-        raw_text = self._extract_text(pdf_path)
-        text = self._load_act_text(raw_text)           # discard TOC
-        text = self._strip_page_numbers(text)          # lone numbers at top of pages
-        text = self._remove_editorial_marks(text)      # 1[, 2***, 3[...] etc.
-        text = self._remove_footnotes(text)            # 1. Subs. by... etc.
-        chapter_blocks = self._split_chapters(text)
-
-        sections = []
-        for ch in chapter_blocks:
-            for sec in self._split_sections(ch['text']):
-                replaced_by = self._ipc_to_bns.get(sec["section_number"],"")  # for specifc IPS Section the replaced_by is equal to BNS Section
-                sections.append(Section(
-                    act="IPC",
-                    unit_type="section",
-                    number=sec['section_number'],
-                    title=sec['title'],
-                    body=sec['body'], 
-                    status="repealed",     # Since the status is change from 'active' to 'repealed' because of BNS act
-                    
-                    metadata={
-                        "chapter": ch['num'],
-                        "chapter_title": ch['title'],
-                        "effective_date": "1860-01-01",
-                        "replaced_by":replaced_by,   # BNS section corresponding to this repealed IPC section. 
-                    }
-                ))
-        return sections
-
-    # ------------------------------------------------------------------
-    # Internal helpers (each does one job)
-    # ------------------------------------------------------------------
->>>>>>> 0ce4b09 (feat: integrate official IPC and CrPC section mappings)
+        raw_text = self._extract_raw_text(pdf_path)
+        toc_text, body_text = self._split_toc_and_body(raw_text)
+        toc_entries = self._parse_toc(toc_text)
+        return self._parse_body(body_text, toc_entries, self._ipc_to_bns)
 
     @staticmethod
     def _extract_raw_text(pdf_path: Path) -> str:
@@ -217,7 +176,7 @@ class IPCParser:
         return entries
 
     @staticmethod
-    def _parse_body(body_text: str, toc_entries: list[dict]) -> list[Section]:
+    def _parse_body(body_text: str, toc_entries: list[dict], ipc_to_bns_mapping: dict) -> list[Section]:
         chapters = list(CHAPTER_START.finditer(body_text))
 
         # pass 1: walk the TOC in order, and for each expected (non-stub)
@@ -258,12 +217,14 @@ class IPCParser:
 
             chapter = IPCParser._label_for_position(chapters, match.start())
             metadata = {"chapter": chapter, "effective_date": EFFECTIVE_DATE}
-            if entry["number"] in IPC_TO_BNS:
-                metadata["replaced_by"] = IPC_TO_BNS[entry["number"]]
+            # for specifc IPS Section the replaced_by is equal to BNS Section
+            if entry["number"] in ipc_to_bns_mapping:
+                metadata["replaced_by"] = ipc_to_bns_mapping[entry["number"]]  # BNS section corresponding to this repealed IPC section.
 
             sections.append(Section(
                 act=ACT, unit_type="section", number=entry["number"],
-                title=entry["title"], body=body, status=DEFAULT_STATUS,
+                title=entry["title"], body=body, 
+                status=DEFAULT_STATUS,  # Since the status is change from 'active' to 'repealed' because of BNS act
                 metadata=metadata,
             ))
 
