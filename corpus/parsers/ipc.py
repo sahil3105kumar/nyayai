@@ -36,15 +36,15 @@ bracket noise harmless - a false-positive match is simply never the
 number being waited for, so it's silently skipped rather than accepted.
 """
 
+import json
 import re
 from pathlib import Path
 
 from corpus.schemas import Section
-from corpus.data.ipc_bns_mapping import IPC_TO_BNS
 from corpus.pdf_utils import extract_pdf_pages, remove_repeated_headers
 
 ACT = "IPC"
-DEFAULT_STATUS = "repealed"  # BNS replaced the IPC in full, effective 2024-07-01
+DEFAULT_STATUS = "repealed"  # BNS replaced the IPC in full, effective 2024-0s7-01
 EFFECTIVE_DATE = "1860-01-01"
 
 # marks where the TOC ends and the actual numbered Act text begins
@@ -114,15 +114,26 @@ def _candidate_pattern(number: str) -> re.Pattern:
 # TOC titles that mean "this section has no body text at all"
 STUB_MARKERS = ("[omitted", "[repealed")
 
+# Path to the official IPC → BNS mapping JSON file
+_MAPPING_FILE = (
+    Path(__file__).parent.parent/"data"/"ipc_to_bns_mapping.json"
+)
 
 class IPCParser:
     act = ACT
 
+    # Load the IPC → BNS mapping once during init.
+    def __init__(self):
+        with open(_MAPPING_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        self._ipc_to_bns = data.get("ipc_to_bns", {})
+
     def parse(self, pdf_path: Path) -> list[Section]:
+        """Public entry point – takes a PDF path, returns Sections."""
         raw_text = self._extract_raw_text(pdf_path)
         toc_text, body_text = self._split_toc_and_body(raw_text)
         toc_entries = self._parse_toc(toc_text)
-        return self._parse_body(body_text, toc_entries)
+        return self._parse_body(body_text, toc_entries, self._ipc_to_bns)
 
     @staticmethod
     def _extract_raw_text(pdf_path: Path) -> str:
@@ -165,7 +176,7 @@ class IPCParser:
         return entries
 
     @staticmethod
-    def _parse_body(body_text: str, toc_entries: list[dict]) -> list[Section]:
+    def _parse_body(body_text: str, toc_entries: list[dict], ipc_to_bns_mapping: dict) -> list[Section]:
         chapters = list(CHAPTER_START.finditer(body_text))
 
         # pass 1: walk the TOC in order, and for each expected (non-stub)
@@ -206,12 +217,14 @@ class IPCParser:
 
             chapter = IPCParser._label_for_position(chapters, match.start())
             metadata = {"chapter": chapter, "effective_date": EFFECTIVE_DATE}
-            if entry["number"] in IPC_TO_BNS:
-                metadata["replaced_by"] = IPC_TO_BNS[entry["number"]]
+            # for specifc IPS Section the replaced_by is equal to BNS Section
+            if entry["number"] in ipc_to_bns_mapping:
+                metadata["replaced_by"] = ipc_to_bns_mapping[entry["number"]]  # BNS section corresponding to this repealed IPC section.
 
             sections.append(Section(
                 act=ACT, unit_type="section", number=entry["number"],
-                title=entry["title"], body=body, status=DEFAULT_STATUS,
+                title=entry["title"], body=body, 
+                status=DEFAULT_STATUS,  # Since the status is change from 'active' to 'repealed' because of BNS act
                 metadata=metadata,
             ))
 
