@@ -1,8 +1,16 @@
 """
-IPC parser. fully self-contained - no shared base class with any other
-act's parser. IPC's real PDF has real-world noise that a generic parser
-would fight, and none of it is guaranteed to look anything like BNS/BNSS's
-(IPC is a 160-year-old, heavily-amended act; BNS/BNSS are brand new).
+IPC parser. fully self-contained - no shared base class or inheritance
+with any other act's parser (see issue #26: corpus/parsers/base.py's
+unused ChapterSectionParser was deleted, and this act stays independent
+of BNS/BNSS/CPC's parsing grammar on purpose). IPC's real PDF has
+real-world noise that a generic parser would fight, and none of it is
+guaranteed to look anything like BNS/BNSS's (IPC is a 160-year-old,
+heavily-amended act; BNS/BNSS are brand new).
+
+"independent" is about not inheriting a shared parsing *class* - it
+doesn't mean reinventing plain PDF-reading plumbing. page extraction and
+running-header stripping aren't act-specific grammar, so they're shared
+via corpus/pdf_utils.py's plain functions instead of copied here.
 
 what the real PDF actually looks like, verified against the real file
 (not assumed from IndiaCode's usual formatting):
@@ -31,10 +39,9 @@ number being waited for, so it's silently skipped rather than accepted.
 import re
 from pathlib import Path
 
-import pdfplumber
-
 from corpus.schemas import Section
 from corpus.data.ipc_bns_mapping import IPC_TO_BNS
+from corpus.pdf_utils import extract_pdf_pages, remove_repeated_headers
 
 ACT = "IPC"
 DEFAULT_STATUS = "repealed"  # BNS replaced the IPC in full, effective 2024-07-01
@@ -119,32 +126,18 @@ class IPCParser:
 
     @staticmethod
     def _extract_raw_text(pdf_path: Path) -> str:
-        with pdfplumber.open(pdf_path) as pdf:
-            pages = [page.extract_text() or "" for page in pdf.pages]
-        pages = IPCParser._strip_running_headers(pages)
+        # shared with every other act's parser via corpus/pdf_utils.py -
+        # IPC used to keep its own private copy of this exact logic, which
+        # is the duplicate implementation issue #26 flagged. there's
+        # nothing IPC-specific about "strip lines repeated across most
+        # pages" - it's page/PDF plumbing, not act-specific grammar, so it
+        # belongs in the shared plain-function module, not copied into
+        # each parser. IPC still doesn't inherit from any shared parser
+        # *class* - that's the actual independence this file's docstring
+        # cares about - it just isn't reinventing plain PDF-reading helpers.
+        pages = extract_pdf_pages(pdf_path)
+        pages = remove_repeated_headers(pages)
         return "\n".join(pages)
-
-    @staticmethod
-    def _strip_running_headers(pages: list[str]) -> list[str]:
-        """a line repeated across most pages (act name, page number) is boilerplate, not section text."""
-        if len(pages) < 3:
-            return pages
-
-        line_counts: dict[str, int] = {}
-        for page in pages:
-            for line in page.splitlines():
-                line = line.strip()
-                if line:
-                    line_counts[line] = line_counts.get(line, 0) + 1
-
-        threshold = len(pages) * 0.5
-        boilerplate = {line for line, count in line_counts.items() if count >= threshold}
-
-        cleaned = []
-        for page in pages:
-            kept = [ln for ln in page.splitlines() if ln.strip() not in boilerplate]
-            cleaned.append("\n".join(kept))
-        return cleaned
 
     @staticmethod
     def _split_toc_and_body(raw_text: str) -> tuple[str, str]:
