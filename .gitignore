@@ -91,6 +91,15 @@ data/temp/
 data/cache/
 data/uploads/
 data/processed/
+data/celery/
+data/output/
+data/training/
+
+# Control files
+control/
+control
+
+
 
 # Keep directory structure
 !data/.gitkeep
@@ -141,3 +150,4 @@ output/
 output/
 docker/qdrant/
 docker/redis/
+/data
