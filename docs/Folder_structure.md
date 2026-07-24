@@ -164,12 +164,6 @@ NyayAI/
 │   ├── temp/                        # scratch - gitignored
 │   └── celery/                      # filesystem broker + sqlite result backend files live here
 │
-├── reviews/                        # historical architectural review notes from earlier in
-│                                   #   development - some recommendations here are now tracked
-│                                   #   as GitHub issues; candidate for folding into architecture.md
-│                                   #   and removing once those issues close
-│   ├── review of phase 3 - corpus section.md
-│   └── review of pipeline and orchestration.md
 │
 ├── tests/                          # NO REAL TESTS YET - see note below
 │   ├── conftest.py                    # empty (`pass`)
@@ -190,29 +184,13 @@ NyayAI/
     ├── corpus.md
     ├── api.md
     ├── roadmap.md
-    ├── Folder_structure.md            # this file
-    ├── PHASE_1.md                     # historical dev log - phase 1 (OCR), kept for the real
-    │                                 #   lessons learned during that phase, still broadly accurate
-    ├── PHASE_2.md                     # historical dev log - phase 2 (model), superseded in places
-    │                                 #   (describes model/pipeline.py and model/citation_checker.py
-    │                                 #   as the eventual home for logic that later moved to pipeline/
-    │                                 #   and rules/ respectively) - kept for historical context only
-    └── Phase Explanation.md           # earliest project plan - meaningfully stale (WordToken,
-                                      #   Redis, scripts/-based corpus ingestion) - kept as a historical
-                                      #   record of the original plan, not a current reference
+    └──  Folder_structure.md            # this file
 
 ---
 
 ## notes on this listing vs. the repo
-
-- `test_deps.py` and `test_gpu.py` sitting at the repo root (not in
-  `scripts/` or `tests/`) look like ad hoc personal debugging scripts —
-  worth moving into `scripts/` or removing if they're no longer needed.
 - DVC (`.dvc/`, `.dvcignore`, `data.dvc`) is present but not documented
   anywhere else in the repo (README, other docs) — worth either
   documenting what it tracks and how to use it, or removing it if it's
   not actually in active use.
-- `docker-compose.yml` still defines a `redis` service. Nothing in the
-  current codebase uses it — Celery uses the filesystem broker + SQLite
-  result backend (see `workers/celery_app.py` and `config/settings.py`).
-  This is a known, tracked inconsistency, not intentional.
+
